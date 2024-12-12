@@ -1,8 +1,11 @@
 import gc
+import logging
 import platform
 from contextlib import contextmanager
 from pathlib import Path
 import struct
+
+logger = logging.getLogger(__name__)
 
 IS_WINDOWS = False
 if platform.system() == "Windows":
@@ -50,7 +53,7 @@ def _trigger_excel_on_windows(filepath: str) -> bool:
     if IS_WINDOWS:
         xlApp = None
         xlBook = None
-        print("Triggering Excel save on Windows Excel app")
+        logger.info("Triggering Excel save on Windows Excel app")
         with catch_com_error():
             try:
                 # Try to connect to an existing Excel instance first
@@ -65,7 +68,7 @@ def _trigger_excel_on_windows(filepath: str) -> bool:
                         )
                         was_running = False
                     except (COMError, AttributeError) as e:
-                        print("Excel is not available on this system")
+                        logger.debug("Excel is not available on this system")
                         return False
 
                 # Store original visibility state

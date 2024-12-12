@@ -1,9 +1,11 @@
 from pathlib import Path
 import platform
 import subprocess
+import logging
 
 IS_MAC = platform.system() == "Darwin"
 
+logger = logging.getLogger(__name__)
 
 def _trigger_excel_on_mac(filepath: str) -> bool:
     """Trigger Excel to open and save a file using AppleScript.
@@ -16,30 +18,31 @@ def _trigger_excel_on_mac(filepath: str) -> bool:
     """
     result = False
     if IS_MAC:
-        print("Triggering Excel save on MacOS Excel app")
+        logger.info("Triggering Excel save on MacOS Excel app")
         # Convert to absolute path
         abs_path = str(Path(filepath).resolve())
 
-        # First, check if Excel is installed and launch if needed
+        # Updated script to check if Excel is installed
         launch_script = """
             tell application "System Events"
-                if not (exists application "Microsoft Excel") then
-                    return false
-                end if
-                set isExcelRunning to (exists (processes where name is "Microsoft Excel"))
-                if not isExcelRunning then
-                    tell application "Microsoft Excel"
-                        launch
-                        set visible to false
-                    end tell
-                    -- Wait for process to appear
-                    set startTime to current date
-                    repeat until exists (processes where name is "Microsoft Excel")
-                        delay 0.5
-                        if (current date) - startTime > 10 then
-                            error "Excel process did not start within 10 seconds"
-                        end if
-                    end repeat
+                set excelExists to exists application process "Microsoft Excel"
+                if not excelExists then
+                    try
+                        tell application "Microsoft Excel"
+                            launch
+                            set visible to false
+                        end tell
+                        -- Wait for process to appear
+                        set startTime to current date
+                        repeat until exists application process "Microsoft Excel"
+                            delay 0.5
+                            if (current date) - startTime > 10 then
+                                error "Excel process did not start within 10 seconds"
+                            end if
+                        end repeat
+                    on error
+                        return false
+                    end try
                 end if
                 return true
             end tell
@@ -51,9 +54,11 @@ def _trigger_excel_on_mac(filepath: str) -> bool:
                 ["osascript", "-e", launch_script],
                 capture_output=True,
                 text=True,
-                check=True,
+                check=False,
             )
-            if "false" in launch_result.stdout.lower():
+            logger.debug(f"Launch result: {launch_result.stdout}")
+            if launch_result.returncode != 0 or "false" in launch_result.stdout.lower():
+                logger.warning("Microsoft Excel is not installed or cannot be launched")
                 return False
 
             # Modify the save script to keep Excel invisible
@@ -107,5 +112,6 @@ def _trigger_excel_on_mac(filepath: str) -> bool:
                 raise RuntimeError(f"Excel automation failed: {result.stderr}")
             result = True
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to execute Excel automation: {e.stderr}")
+            logger.error(f"Failed to execute Excel automation: {e.stderr}")
+            return False
     return result
