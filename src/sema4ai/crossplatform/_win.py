@@ -37,12 +37,16 @@ def catch_com_error():
         raise RuntimeError(msg) from err
 
 
-def _trigger_excel_on_windows(filepath: str):
+def _trigger_excel_on_windows(filepath: str) -> bool:
     """Trigger Excel to open and save a file using COM interface.
 
     Args:
         filepath: Path to the Excel file to save
+
+    Returns:
+
     """
+    result = False
     if IS_WINDOWS:
         xlApp = None
         xlBook = None
@@ -53,10 +57,16 @@ def _trigger_excel_on_windows(filepath: str):
                 try:
                     xlApp = win32com.client.GetObject(Class="Excel.Application")
                     was_running = True
-                except:
-                    # If no existing instance, create a new one
-                    xlApp = win32com.client.gencache.EnsureDispatch("Excel.Application")
-                    was_running = False
+                except (COMError, AttributeError):
+                    try:
+                        # If no existing instance, create a new one
+                        xlApp = win32com.client.gencache.EnsureDispatch(
+                            "Excel.Application"
+                        )
+                        was_running = False
+                    except (COMError, AttributeError) as e:
+                        print("Excel is not available on this system")
+                        return False
 
                 # Store original visibility state
                 original_visible = xlApp.Visible
@@ -71,6 +81,7 @@ def _trigger_excel_on_windows(filepath: str):
                 if xlBook is None:
                     raise RuntimeError(f"Failed to open workbook: {abs_path}")
                 xlBook.Save()
+                result = True
             finally:
                 if xlBook is not None:
                     xlBook.Close(SaveChanges=False)
@@ -83,3 +94,4 @@ def _trigger_excel_on_windows(filepath: str):
                     # Only quit Excel if we started it
                     if not was_running:
                         xlApp.Quit()
+    return result

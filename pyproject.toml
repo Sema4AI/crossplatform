@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "sema4ai-crossplatform"
-version = "0.1.0"
-description = "Sema4.ai crossplatform depdendencies"
+version = "0.1.1"
+description = "Sema4.ai crossplatform dependencies"
 authors = [
 	"Mika H. <mika@sema4.ai>",
 ]
@@ -29,7 +29,7 @@ semver = "^3.0.0"
 pylint = "^2.17.4"
 
 [tool.mypy]
-mypy_path = "src"
+mypy_path = "src:tests"
 
 [tool.black]
 skip-string-normalization = false
